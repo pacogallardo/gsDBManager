@@ -4,9 +4,13 @@ import datetime
 
 
 # main connection configuration
-server1 = [{'host':'localhost', 'database':'gs_1', 'user':'username', 'pw':'password'}]
+mainServer = [{'host':'localhost', 'database':'gs_1', 'user':'username', 'pw':'password'}]
 # connection 2 configuration
-server2 = [{'host':'localhost', 'database':'gs_2', 'user':'username', 'pw':'password'}]
+slaveServers = [
+			{'host':'localhost', 'database':'gs_2', 'user':'username', 'pw':'password'},
+			{'host':'localhost', 'database':'gs_3', 'user':'username', 'pw':'password'},
+			{'host':'localhost', 'database':'gs_4', 'user':'username', 'pw':'password'}
+			]
 
 
 class DBManager(object):
@@ -17,7 +21,7 @@ class DBManager(object):
 	def __init__(self, serverConf):
 		super(DBManager, self).__init__()
 		self.__cnx = ''
-		self.__server = serverConf[0]
+		self.__server = serverConf
 	
 	def connect(self) : 
 		if self.__cnx == '' :
@@ -294,76 +298,78 @@ def main() :
 		currentIdQuery1 = ''
 		currentIdQuery2 = ''
 
-		dbM1 = DBManager(server1)
-		dbM2 = DBManager(server2)
-		manager = ResourcesManager()
+		dbM1 = DBManager(mainServer[0])
+		for server in slaveServers :  
+			dbM2 = DBManager(server)
+			log.write('###', 'database: %s' % server.get('database'))
+			manager = ResourcesManager()
 
-		dbM1.connect()
-		dbM2.connect()
+			dbM1.connect()
+			dbM2.connect()
 
-		numPapers = manager.maxQuery(dbM2)
-		
-		if numPapers > 0 :
+			numPapers = manager.maxQuery(dbM2)
 			
-			for i in range(1,numPapers+1) : 
-				result = manager.getDBQuery(dbM2, i)
+			if numPapers > 0 :
 				
-				print '%s - %s' % (result[0], unicode(result[1]))
-				log.write(result[0],unicode(result[1]))
-				
-				if not result == None :
-			
-					qObj = Query(result[0],unicode(result[1]),result[2],result[3],result[4])
-					currentIdQuery2 = qObj.id
-					idQueryMain = manager.existQuery(dbM1, qObj.query)
+				for i in range(1,numPapers+1) : 
+					result = manager.getDBQuery(dbM2, i)
 					
-					if idQueryMain == 0 :
-						currentIdQuery1 = manager.insertQuery(dbM1,qObj)
-						resources = manager.getDBResources(dbM2, currentIdQuery2)
-						for item in resources : 
-							resource = Paper(item[0],item[1],item[2],item[3],item[4],item[5],item[6],item[7],item[8],item[9])
-							
-							if not resource.isCite() and not resource.isVersion() :
-								exist = manager.existResource(dbM1, resource.resourceURL)
-								resourceId1 = manager.getDBResourceByResourceURL(dbM1,resource.resourceURL)
+					print '%s - %s' % (result[0], unicode(result[1]))
+					log.write(result[0],unicode(result[1]))
+					
+					if not result == None :
+				
+						qObj = Query(result[0],unicode(result[1]),result[2],result[3],result[4])
+						currentIdQuery2 = qObj.id
+						idQueryMain = manager.existQuery(dbM1, qObj.query)
 						
-								if exist > 0 and not resourceId1 == None : 
-									qResult =  manager.getDBQueriesResultByIdResource(dbM1,resourceId1[0])
-									manager.insertQueriesResult(dbM1,qResult[0][0],currentIdQuery1,qResult[0][2],qResult[0][3])
-									
-									cites = manager.getDBCites(dbM1,resourceId1[0])
-									versions = manager.getDBVersions(dbM1,resourceId1[0])
-															
-									for iC in cites :
-										currentCiteIdResource = iC[0]
-										qResult = manager.getDBQueriesResultByIdResource(dbM1,currentCiteIdResource)
+						if idQueryMain == 0 :
+							currentIdQuery1 = manager.insertQuery(dbM1,qObj)
+							resources = manager.getDBResources(dbM2, currentIdQuery2)
+							for item in resources : 
+								resource = Paper(item[0],item[1],item[2],item[3],item[4],item[5],item[6],item[7],item[8],item[9])
+								
+								if not resource.isCite() and not resource.isVersion() :
+									exist = manager.existResource(dbM1, resource.resourceURL)
+									resourceId1 = manager.getDBResourceByResourceURL(dbM1,resource.resourceURL)
+							
+									if exist > 0 and not resourceId1 == None : 
+										qResult =  manager.getDBQueriesResultByIdResource(dbM1,resourceId1[0])
 										manager.insertQueriesResult(dbM1,qResult[0][0],currentIdQuery1,qResult[0][2],qResult[0][3])
-									for iV in versions : 
-										currentVersionIdResource = iV[0]
-										qResult = manager.getDBQueriesResultByIdResource(dbM1,currentVersionIdResource)
-										manager.insertQueriesResult(dbM1,qResult[0][0],currentIdQuery1,qResult[0][2],qResult[0][3])
+										
+										cites = manager.getDBCites(dbM1,resourceId1[0])
+										versions = manager.getDBVersions(dbM1,resourceId1[0])
+																
+										for iC in cites :
+											currentCiteIdResource = iC[0]
+											qResult = manager.getDBQueriesResultByIdResource(dbM1,currentCiteIdResource)
+											manager.insertQueriesResult(dbM1,qResult[0][0],currentIdQuery1,qResult[0][2],qResult[0][3])
+										for iV in versions : 
+											currentVersionIdResource = iV[0]
+											qResult = manager.getDBQueriesResultByIdResource(dbM1,currentVersionIdResource)
+											manager.insertQueriesResult(dbM1,qResult[0][0],currentIdQuery1,qResult[0][2],qResult[0][3])
 
-								else : 
+									else : 
 
-									currentIdResource1 = manager.insertResource(dbM1,resource)
-									qResult =  manager.getDBQueriesResultByIdResource(dbM2,resource.idRESOURCES)
-									manager.insertQueriesResult(dbM1,currentIdResource1,currentIdQuery1,qResult[0][2],qResult[0][3])
-									
-									cites = manager.getDBCites(dbM2,resource.idRESOURCES)
-									versions = manager.getDBVersions(dbM2,resource.idRESOURCES)
-															
-									for iC in cites :
-										currentCite = Paper(iC[0],iC[1],iC[2],iC[3],iC[4],iC[5],iC[6],iC[7],iC[8],iC[9])
-										currentCite.isCiteOf = currentIdResource1
-										currentCiteId = manager.insertResource(dbM1,currentCite)
-										qResult = manager.getDBQueriesResultByIdResource(dbM2,currentCite.idRESOURCES)
-										manager.insertQueriesResult(dbM1,currentCiteId,currentIdQuery1,qResult[0][2],qResult[0][3])
-									for iV in versions : 
-										currentVersion = Paper(iV[0],iV[1],iV[2],iV[3],iV[4],iV[5],iV[6],iV[7],iV[8],iV[9])
-										currentVersion.isVersionOf = currentIdResource1
-										currentVersionId = manager.insertResource(dbM1,currentVersion)
-										qResult = manager.getDBQueriesResultByIdResource(dbM2,currentVersion.idRESOURCES)
-										manager.insertQueriesResult(dbM1,currentVersionId,currentIdQuery1,qResult[0][2],qResult[0][3])
+										currentIdResource1 = manager.insertResource(dbM1,resource)
+										qResult =  manager.getDBQueriesResultByIdResource(dbM2,resource.idRESOURCES)
+										manager.insertQueriesResult(dbM1,currentIdResource1,currentIdQuery1,qResult[0][2],qResult[0][3])
+										
+										cites = manager.getDBCites(dbM2,resource.idRESOURCES)
+										versions = manager.getDBVersions(dbM2,resource.idRESOURCES)
+																
+										for iC in cites :
+											currentCite = Paper(iC[0],iC[1],iC[2],iC[3],iC[4],iC[5],iC[6],iC[7],iC[8],iC[9])
+											currentCite.isCiteOf = currentIdResource1
+											currentCiteId = manager.insertResource(dbM1,currentCite)
+											qResult = manager.getDBQueriesResultByIdResource(dbM2,currentCite.idRESOURCES)
+											manager.insertQueriesResult(dbM1,currentCiteId,currentIdQuery1,qResult[0][2],qResult[0][3])
+										for iV in versions : 
+											currentVersion = Paper(iV[0],iV[1],iV[2],iV[3],iV[4],iV[5],iV[6],iV[7],iV[8],iV[9])
+											currentVersion.isVersionOf = currentIdResource1
+											currentVersionId = manager.insertResource(dbM1,currentVersion)
+											qResult = manager.getDBQueriesResultByIdResource(dbM2,currentVersion.idRESOURCES)
+											manager.insertQueriesResult(dbM1,currentVersionId,currentIdQuery1,qResult[0][2],qResult[0][3])
 										
 	except mysql.connector.Error as err :
 		print (err)
