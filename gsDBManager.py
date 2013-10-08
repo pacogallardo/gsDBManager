@@ -1,3 +1,10 @@
+'''
+        Paco Gallardo 2013
+
+        Merges Scraper Databases
+                gsDBManager: https://bitbucket.org/paco_gallardo/agris2scrapper
+
+'''
 import mysql.connector
 import os.path
 import datetime
@@ -317,9 +324,9 @@ def main() :
 					
 					
 					if not result == None :
-						print ('%s - %s') % (result[0], unicode(result[1]))
-						log.write(result[0],unicode(result[1]))
-						qObj = Query(result[0],unicode(result[1]),result[2],result[3],result[4])
+						print ('%s - %s') % (result[0], result[1].encode('utf-8'))
+						log.write(result[0],result[1].encode('utf-8'))
+						qObj = Query(result[0],result[1].encode('utf-8'),result[2],result[3],result[4])
 						currentIdQuery2 = qObj.id
 						idQueryMain = manager.existQuery(dbM1, qObj.query)
 						
